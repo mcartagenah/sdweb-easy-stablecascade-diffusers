@@ -12,6 +12,8 @@ from modules.ui_components import ResizeHandleRow
 from modules.ui_components import ToolButton
 import modules.infotext_utils as parameters_copypaste
 
+torch.backends.cuda.enable_mem_efficient_sdp(False)
+
 # modules/infotext_utils.py
 def quote(text):
     if ',' not in str(text) and '\n' not in str(text) and ':' not in str(text):
@@ -50,6 +52,7 @@ def predict(prompt, negative_prompt, width, height, guidance_scale, prior_steps,
         dtype = torch.bfloat16
    
     prior = StableCascadePriorPipeline.from_pretrained("stabilityai/stable-cascade-prior", torch_dtype=dtype).to(device)
+    prior.enable_model_cpu_offload()
 
     fixed_seed = get_fixed_seed(seed)
     prior_output = prior(
@@ -71,9 +74,9 @@ def predict(prompt, negative_prompt, width, height, guidance_scale, prior_steps,
         torch.cuda.empty_cache()
 
     decoder = StableCascadeDecoderPipeline.from_pretrained("stabilityai/stable-cascade",  torch_dtype=torch.float16).to(device)
+    decoder.enable_model_cpu_offload()
     decoder_output = decoder(
-        image_embeddings=prior_output.image_embeddings.half(),
-        #image_embeddings=image,
+        image_embeddings=prior_output.image_embeddings.half(),          
         prompt=prompt,
         negative_prompt=negative_prompt,
         guidance_scale=0.0,
